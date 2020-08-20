@@ -1,0 +1,373 @@
+{% extends '_base_list.html' %}
+{% load i18n static %}
+{% block custom_head_css_js %}
+<!--20秒自动刷新-->
+<!--<meta http-equiv="refresh" content="20">-->
+<link href="{% static 'js/layui/css/layui.css' %}" rel="stylesheet">
+<script src="{% static 'js/layui/layui.all.js' %}"></script>
+{% endblock %}
+{% block table_search %}
+<!--{% include '_csv_import_export.html' %}-->
+{% endblock %}
+{% block table_container %}
+{% if request.COOKIES.IN_ADMIN_PAGE != 'No' %}
+<div class="pull-left m-r-5" title="该功能待升级...">
+    <a href="{% url 'cis:ci-create' %}" class="btn btn-sm btn-primary ">
+        {% trans "Create project" %}
+    </a>
+</div>
+{% endif %}
+<table class="table table-striped table-bordered table-hover " id="job_list_table">
+    <thead>
+    <tr>
+        <th class="text-center">
+            <input id="" type="checkbox" class="ipt_check_all">
+        </th>
+        <th class="text-center">{% trans 'Name' %}</th>
+        <th class="text-center">{% trans 'Node' %}</th>
+        <th class="text-center">{% trans 'Health status' %}</th>
+        <th class="text-center">{% trans 'Action' %}</th>
+        <th class="text-center"><i class="layui-icon layui-icon-more" title="历史记录/日志"></i></th>
+    </tr>
+    </thead>
+</table>
+
+<div id="auto-update" class="hide">
+    <i>自动刷新</i>
+    <input type="checkbox" class="text-center block-line" checked id="auto-update-input" style="margin-right: 15px">
+</div>
+{% if request.COOKIES.IN_ADMIN_PAGE != 'No' %}
+<div id="actions" class="hide">
+    <div class="input-group">
+        <select class="form-control m-b" style="width: auto" id="slct_bulk_update">
+            {% if CURRENT_ORG.is_default %}
+            <option value="delete">{% trans 'Delete selected' %}</option>
+            {% else %}
+            <option value="remove">{% trans 'Remove selected' %}</option>
+            {% endif %}
+            <!--<option value="update">{% trans 'Update selected' %}</option>-->
+            <option value="deactive">{% trans 'Deactive selected' %}</option>
+            <option value="active">{% trans 'Active selected' %}</option>
+        </select>
+        <div class="input-group-btn pull-left" style="padding-left: 5px;">
+            <button id='btn_bulk_update' style="height: 32px;" class="btn btn-sm btn-primary">
+                {% trans 'Submit' %}
+            </button>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+{% block content_bottom_left %}{% endblock %}
+{% block custom_foot_js %}
+<script src="{% static 'js/layui/layui.js' %}"></script>
+<script src="{% static 'js/jenkins/jenkins.js' %}"></script>
+
+<script>
+    var jobsTable = 0;
+    function initTable() {
+        var options = {
+            ele: $('#job_list_table'),
+
+            columnDefs: [
+                {
+                    targets: 1, createdCell: function (td, cellData, rowData) {
+                        $(td).removeClass('text-center');
+                        $(td).addClass('text-left col-md-8');
+                        var url = htmlEscape(rowData.url);
+                        {% if request.COOKIES.IN_ADMIN_PAGE != 'No' %}
+                            url = rowData.url_set;
+                        {% endif %}
+                        var link = '<a href="JOB_URL" target="_blank" class="block col-12" title="JOB_TYPE">'
+                            .replace('JOB_URL', url)
+                            .replace('JOB_TYPE', rowData.job_type) + cellData + '</a>'
+                        $(td).html(link)
+                    }
+                },
+                {
+                    targets: 3, createdCell: function (td, cellData, rowData) {
+                        var icon = "<i class='fa fa-soundcloud text-dark' title='JOB_STATUS'></i>".replaceAll("JOB_STATUS", gettext(cellData));
+                        if (cellData === 'blue') {
+                            var icon = "<i class='fa fa-sun-o text-warning' title='JOB_STATUS'></i>".replaceAll("JOB_STATUS", gettext(cellData));
+                        // } else if (['blue_anime', 'aborted_anime', 'notbuilt_anime', 'red_anime'].includes(cellData)) {
+                        } else if (cellData.endsWith('_anime')) {
+                            var icon = "<i class='fa fa-spinner fa-spin text-info' title='JOB_STATUS'></i>".replaceAll("JOB_STATUS", gettext(cellData));
+                        } else if (cellData === 'aborted') {
+                            var icon = "<i class='fa fa-bolt text-primary' title='JOB_STATUS'></i>".replaceAll("JOB_STATUS", gettext(cellData));
+                        } else if (cellData === 'notbuilt') {
+                            var icon = "<i class='fa fa-hand-paper-o' title='JOB_STATUS'></i>".replaceAll("JOB_STATUS", gettext(cellData));
+                        } else if (cellData === 'disabled') {
+                            var icon = "<i class='fa fa-ban' title='JOB_STATUS'></i>".replaceAll("JOB_STATUS", gettext(cellData));
+                        }
+                        $(td).html(icon);
+                    }
+                },
+                {
+                    targets: -1, createdCell: function (td, cellData, rowData) {
+                        var url = htmlEscape(cellData);
+                        var link = '<a href="JOB_URL" target="_blank" class="block col-12" title="JOB_RECORDS">VERSION</a>'
+                            .replace('JOB_URL', url)
+                            .replace('JOB_RECORDS', gettext('History records'))
+                            .replace('VERSION', rowData['version']);
+                        $(td).html(link);
+                    }
+                },
+                {
+                    targets: -2, createdCell: function (td, cellData, rowData) {
+                        var stop_btn = '<a class="btn btn-xs btn-danger m-l-xs btn_job_stop" data-url="JOB_URL" data-name="JOB_NAME" data-value="stop"><i class="fa fa-stop"></i></a>'
+                            .replace('JOB_URL', rowData.url)
+                            .replace('JOB_NAME', cellData);
+
+                        var play_btn = '<a class="btn btn-xs btn-success m-l-xs btn_job_play" data-url="JOB_URL" data-name="JOB_NAME" data-value="play"><i class="fa fa-play"></i></a>'
+                            .replace('JOB_URL', rowData.url)
+                            .replace('JOB_NAME', cellData);
+
+                        var play_btn_dark = '<a class="btn btn-xs btn-primary m-l-xs btn_job_play disabled" data-url="JOB_URL" data-name="JOB_NAME" data-value="play"><i class="fa fa-play"></i></a>'
+                            .replace('JOB_URL', rowData.url)
+                            .replace('JOB_NAME', cellData);
+
+                        var del_btn = '<a class="btn btn-xs btn-danger m-l-xs btn_job_delete" data-url="JOB_URL" data-name="JOB_NAME"><i class="fa fa-remove"></i></a>'
+                            .replace('JOB_URL', rowData.url)
+                            .replace('JOB_NAME', cellData);
+
+                        var btns;
+
+                        // if (['blue_anime', 'aborted_anime', 'notbuilt_anime', 'red_anime'].includes(rowData.status)) {
+                        if (rowData.status.endsWith('_anime')) {
+                            btns = stop_btn;
+                        } else if (rowData.status === 'disabled') {
+                            btns = play_btn_dark;
+                        } else {
+                            btns = play_btn;
+                        }
+                        {% if request.COOKIES.IN_ADMIN_PAGE != 'No' %}
+                            btns += del_btn;
+                        {% endif %}
+                        $(td).html(btns);
+                    }
+                }
+            ],
+            ajax_url: '{% url "api-cis:ci-list" %}',
+            columns: [
+                {data: "id"},
+                {data: "name"},
+                {data: "label"},
+                {data: "status", width: '120px'},
+                {data: "name", orderable: false, width: '120px'},
+                {data: "url", orderable: false, width: '50px'}
+            ],
+            pagingNumbersLength: 2,
+            lengthMenu: [[1, 2, 3, 4, 5, 15, 25, 50, 9999], [1, 2, 3, 4, 5, 15, 25, 50, 'All']],
+            lb_html: $('#auto-update').html(),
+            op_html: $('#actions').html(),
+            bProcessing: true,
+        };
+        jobsTable = jumpserver.initServerSideDataTable(options);
+        return jobsTable
+    }
+
+    // 设置bProcessing
+    $.fn.dataTableExt.oApi.fnProcessingIndicator = function (oSettings, onoff)
+    {
+        if( typeof(onoff) == 'undefined' )
+        {
+            onoff=true;
+        }
+        this.oApi._fnProcessingDisplay(oSettings, onoff);
+    };
+
+    $(document).ready(function () {
+        jobsTable = initTable();
+        //每秒加载一次数据
+        setInterval(function () {
+            if ($("#auto-update-input").is(':checked')) {
+                var dTable = $('#job_list_table').dataTable();
+                dTable.fnDraw(false);
+                dTable.fnProcessingIndicator(false);
+                // oSettings=dTable.fnSettings();
+                // dTable.oApi._fnProcessingDisplay(oSettings, false);
+            }
+        }, 1000)
+
+    }).on('click', '#btn_bulk_update', function () {
+        var action = $('#slct_bulk_update').val();
+        var id_list = jobsTable.selected;
+        if (id_list.length === 0) {
+            return false;
+        }
+        var the_url = "{% url 'api-cis:ci-list' %}";
+        var data = {
+            'resources': id_list
+        };
+
+        function reloadPage() {
+            setTimeout(function () {
+                window.location.reload();
+            }, 100);
+        }
+
+        function doDeactive() {
+            var data = [];
+            $.each(id_list, function (index, object_id) {
+                var obj = {"name": object_id, "is_active": false};
+                data.push(obj);
+            });
+            requestApi({
+                url: the_url,
+                method: 'PATCH',
+                body: JSON.stringify(data),
+                success: reloadPage
+            });
+        }
+
+        function doActive() {
+            var data = [];
+            $.each(id_list, function (index, object_id) {
+                var obj = {"name": object_id, "is_active": true};
+                data.push(obj);
+            });
+            requestApi({
+                url: the_url,
+                method: 'PATCH',
+                body: JSON.stringify(data),
+                success: reloadPage
+            });
+        }
+
+        function doDelete(props) {
+            props = props || {};
+            swal({
+                title: "{% trans 'Are you sure?' %}",
+                text: props.text || "{% trans 'This will delete the selected jobs !!!' %}",
+                type: "warning",
+                showCancelButton: true,
+                cancelButtonText: "{% trans 'Cancel' %}",
+                confirmButtonColor: "#DD6B55",
+                confirmButtonText: "{% trans 'Confirm' %}",
+                closeOnConfirm: false
+            }, function () {
+                function success(data) {
+                    url = setUrlParam(the_url, 'spm', data.spm);
+                    function fail() {
+                        var msg = "{% trans 'User Deleting failed.' %}";
+                        swal("{% trans 'User Delete' %}", msg, "error");
+                    }
+
+                    requestApi({
+                        url: url,
+                        method: 'DELETE',
+                        flash_message: true,
+                        success: reloadPage,
+                        error: props.fail || fail
+                    });
+                }
+
+                requestApi({
+                    url: "{% url 'api-common:resources-cache' %}",
+                    method: 'POST',
+                    body: JSON.stringify(data),
+                    flash_message: false,
+                    success: success,
+                })
+            })
+        }
+
+        function doRemove() {
+            var props = {
+                text: "{% trans 'This will remove the selected jobs !!!' %}",
+                fail: function fail() {
+                    var msg = "{% trans 'Job Removing failed.' %}";
+                    swal("{% trans 'Job Remove' %}", msg, "error");
+                }
+            };
+            doDelete(props);
+        }
+
+        function doUpdate() {
+            function fail(data) {
+                toastr.error(JSON.parse(data))
+            }
+
+            function success(data) {
+                var url = "{% url 'users:user-bulk-update' %}";
+                location.href = setUrlParam(url, 'spm', data.spm);
+            }
+
+            requestApi({
+                url: "{% url 'api-common:resources-cache' %}",
+                method: 'POST',
+                body: JSON.stringify(data),
+                flash_message: false,
+                success: success,
+                error: fail
+            })
+        }
+
+        switch (action) {
+            case 'deactive':
+                doDeactive();
+                break;
+            case 'delete':
+                doDelete();
+                break;
+            case 'remove':
+                doRemove();
+                break;
+            case 'update':
+                doUpdate();
+                break;
+            case 'active':
+                doActive();
+                break;
+            default:
+                break;
+        }
+    }).on('click', '.btn_job_delete', function () {
+        var $this = $(this);
+        var job_url = $this.data('url');
+        var name = $this.data('name');
+        var the_url = '{% url "api-cis:ci-detail" name=DEFAULT_PK %}'.replace("{{ DEFAULT_PK }}", name);
+        objectDelete($this, name, the_url);
+    }).on('click', '.btn_job_play', function () {
+        var $this = $(this);
+        var job_url = $this.data('url');
+        var job_name = $this.data('name'); //b64 编码
+        // console.log(job_name);
+        var arg_url = '{% url "api-cis:ci-args" name=DEFAULT_PK %}'.replace("{{ DEFAULT_PK }}", window.btoa(encodeURIComponent(job_name)));
+        var build_url = '{% url "api-cis:ci-build" name=DEFAULT_PK %}'.replace("{{ DEFAULT_PK }}", window.btoa(encodeURIComponent(job_name)));
+        // 执行脚本
+        var run_url = '{% url "api-cis:ci-groovy" name=DEFAULT_PK %}'.replace("{{ DEFAULT_PK }}", window.btoa(encodeURIComponent(job_name)));
+
+        // var play_rul = '{% url "cis:ci-play" job_name=DEFAULT_PK %}'.replace("{{ DEFAULT_PK }}", window.btoa(encodeURIComponent(job_name)));
+        jobBuild($this, job_name, arg_url, build_url, run_url);
+        // jobBuld2(play_rul);
+
+    }).on('click', '.btn_job_stop', function () {
+        var $this = $(this);
+        var job_name = $this.data('name');
+        var the_url = '{% url "api-cis:ci-stop" name=DEFAULT_PK %}'.replace("{{ DEFAULT_PK }}", window.btoa(encodeURIComponent(job_name)));
+        requestApi({
+            url: the_url,
+            body: JSON.stringify({}),
+            method: 'GET',
+            success_message: gettext("Stop success"),
+            success: function (data) {
+                console.log(data);
+            },
+            error: function (responseText, responseJSON, status) {
+                var errorMsg = '';
+                if (responseJSON && responseJSON.error) {
+                    errorMsg = '';
+                } else if (status === 404) {
+                    errorMsg = gettext("Not found")
+                } else if (status === 417) {
+                    errorMsg = gettext("Job not found")
+                } else {
+                    errorMsg = gettext("Server error")
+                }
+                swal(gettext('Error'), "[ " + job_name + " ] " + errorMsg, 'error');
+            }
+        });
+    });
+</script>
+{% endblock %}

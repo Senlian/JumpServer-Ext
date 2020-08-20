@@ -1,0 +1,53 @@
+{% extends 'orgs/_org_list_base.html' %}
+{% load static %}
+{% load i18n %}
+
+{% block ibox-title %}
+{% trans 'Label list' %}
+<b>{{ org.name }}</b>
+{% endblock %}
+
+{% block ibox-content %}
+<table class="table table-striped table-bordered table-hover " id="label_list_table" >
+    <thead>
+    <tr>
+        <th class="text-center">
+            <input type="checkbox" id="check_all" class="ipt_check_all" >
+        </th>
+        <th class="text-center">{% trans 'Name' %}</th>
+        <th class="text-center">{% trans 'Value' %}</th>
+        <th class="text-center">{% trans 'Asset' %}</th>
+    </tr>
+    </thead>
+    <tbody>
+    </tbody>
+</table>
+{% endblock %}
+
+{% block custom_foot_js %}
+<script>
+function initTable() {
+    var options = {
+        ele: $('#label_list_table'),
+        columnDefs: [
+            {targets: 1, createdCell: function (td, cellData, rowData) {
+                cellData = htmlEscape(cellData);
+                var detail_btn = '<a>' + cellData + '</a>';
+                $(td).html(detail_btn.replace('{{ DEFAULT_PK }}', rowData.id));
+             }}
+        ],
+        ajax_url: '{% url "api-orgs:org-lable-list" %}?sort=name&org_id={{ org.id }}',
+        columns: [
+            {data: "id"}, {data: "name" }, {data: "value" },
+            {data: "asset_count", orderable: false}
+        ],
+        op_html: $('#actions').html()
+    };
+    jumpserver.initServerSideDataTable(options);
+}
+$(document).ready(function(){
+    initTable();
+})
+</script>
+{% endblock %}
+

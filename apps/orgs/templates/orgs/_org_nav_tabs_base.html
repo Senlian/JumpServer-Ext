@@ -1,0 +1,71 @@
+{% load static %}
+{% load i18n %}
+<li>
+    <a href="{% url 'orgs:org-detail' pk=org.id %}" data-target="tab" class="text-center">
+        <i class="fa fa-laptop"></i> {% trans 'Detail' %}
+    </a>
+</li>
+<li>
+    <a href="{% url 'orgs:org-users' pk=org.id %}" data-target="tab" class="text-center">
+        <i class="fa fa-user"></i> {% trans 'Users' %}
+    </a>
+</li>
+<li>
+    <a href="{% url 'orgs:org-groups' pk=org.id %}" data-target="tab" class="text-center">
+        <i class="fa fa-group"></i> {% trans 'User groups' %}
+    </a>
+</li>
+<li>
+    <a href="{% url 'orgs:org-assets' pk=org.id %}" data-target="tab" class="text-center">
+        <i class="fa fa-bar-chart-o"></i> {% trans 'Assets list' %}
+    </a>
+</li>
+<li>
+    <a href="{% url 'orgs:org-domains' pk=org.id %}" data-target="tab" class="text-center">
+        <i class="fa fa-list"></i> {% trans 'Domain list' %}
+    </a>
+</li>
+<li>
+    <a href="{% url 'orgs:org-admin-users' pk=org.id %}" data-target="tab" class="text-center">
+        <i class="fa fa-user-circle"></i> {% trans 'Admin user' %} </a>
+</li>
+<li>
+    <a href="{% url 'orgs:org-system-users' pk=org.id %}" data-target="tab" class="text-center">
+        <i class="fa fa-user-md"></i> {% trans 'System user' %} </a>
+</li>
+<li>
+    <a href="{% url 'orgs:org-labels' pk=org.id %}" data-target="tab" class="text-center">
+        <i class="fa fa-tags"></i> {% trans 'Label list' %} </a>
+</li>
+<script>
+
+    // 获取url相对路径
+    function GetUrlRelativePath() {
+        var url = document.location.toString();
+        var arrUrl = url.split("//");
+        var start = arrUrl[1].indexOf("/");
+        var relUrl = arrUrl[1].substring(start);//stop省略，截取从start开始到结尾的所有字符
+        if (relUrl.indexOf("?") != -1) {
+            relUrl = relUrl.split("?")[0];
+        }
+        return relUrl;
+    }
+
+    //激活tab状态
+    $(function () {
+        $('.nav-tabs li').each(function (i, val) {
+            $(this).on('click', function () {
+                setCookie('ctab', i);
+                $(this).find('a').tab('show');
+            });
+        });
+        var i = getCookie('ctab');
+        var el_href = $('.nav-tabs li').eq(i).find('a').attr('href');
+        if (el_href == GetUrlRelativePath() || GetUrlRelativePath().endsWith(el_href)) {
+            $('.nav-tabs li').eq(i).find('a').tab('show');
+        }else{
+            $('.nav-tabs li').eq(0).find('a').tab('show');
+        }
+    })
+
+</script>

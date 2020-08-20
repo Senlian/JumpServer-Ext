@@ -1,0 +1,66 @@
+{% extends 'base.html' %}
+{% load i18n %}
+{% load static %}
+{% load bootstrap3 %}
+
+{% block content %}
+<div class="black-bg">
+    <p class="text-white" style="white-space: pre" id="job-log"></p>
+</div>
+{% endblock %}
+{% block custom_foot_js %}
+<script>
+    $(document).ready(function () {
+        var log_url = '{% url "api-cis:ci-log" name=job_name version=version %}';
+        // var loading = '\nloading ...';
+        var loading = '<p class="text-success">Loading  <i class="fa fa-spinner fa-spin"></i></p>';
+        var re_pattern =/((.*Finished\: SUCCESS)|(.*Finished\: ABORTED)|(.*Finished\: FAILURE))(\n)?$/
+        requestApi({
+            url: log_url,
+            method: 'GET',
+            success: function (responseJSON) {
+                if (responseJSON) {
+                    var logs = responseJSON['console_output'];
+                    if (!re_pattern.test(logs)) {
+                        // loading += '.';
+                        logs += loading;
+                    }
+                    return $('#job-log').html(logs);
+                }
+                return $('#job-log').html(gettext('No records!!'));
+            },
+            error: function (responseText, responseJSON, status) {
+                var errorMsg = '';
+                if (responseJSON && responseJSON.error) {
+                    errorMsg = '';
+                } else if (status === 404) {
+                    errorMsg = gettext("Not found")
+                } else if (status === 417) {
+                    errorMsg = gettext("Job not found")
+                } else {
+                    errorMsg = gettext("Server error")
+                }
+                swal(gettext('Error'), "[ " + job_name + " ] " + errorMsg, 'error');
+            }
+        });
+
+        var interval = setInterval(function () {
+            $.get(log_url, function (data, status) {
+                    if (data) {
+                        var logs = data['console_output'];
+                        if (!re_pattern.test(logs)) {
+                            // loading += '.';
+                            logs += loading;
+                        } else {
+                            clearInterval(interval);
+                            interval = null;
+                        }
+                        return $('#job-log').html(logs);
+                    }
+                    return $('#job-log').html(gettext('No records!!'));
+                }
+            )
+        }, 1000);
+    })
+</script>
+{% endblock %}

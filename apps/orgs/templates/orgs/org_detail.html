@@ -1,0 +1,84 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load i18n %}
+
+{% block content %}
+    <div class="wrapper wrapper-content animated fadeInRight">
+        <div class="row">
+            <div class="col-sm-12">
+                <div class="ibox float-e-margins">
+                    <div class="panel-options">
+                        <ul id='org_tab' class="nav nav-tabs">
+                            {% include "orgs/_org_nav_tabs_base.html" %}
+                            <li class="pull-right">
+                                <a class="btn btn-outline btn-default" href="{% url 'orgs:org-update' pk=org.id %}"><i class="fa fa-edit"></i>{% trans 'Update' %}</a>
+                            </li>
+                            <li class="pull-right">
+                                <a class="btn btn-outline btn-danger btn-delete-org">
+                                    <i class="fa fa-trash-o"></i>{% trans 'Delete' %}
+                                </a>
+                            </li>
+                        </ul>
+                    </div>
+                    <div class="tab-content">
+                        <div class="col-sm-8" style="padding-left: 0;">
+                            <div class="ibox float-e-margins">
+                                <div class="ibox-title">
+                                    <span class="label"><b>{{ org.name }}</b></span>
+                                    <div class="ibox-tools">
+                                        <a class="collapse-link">
+                                            <i class="fa fa-chevron-up"></i>
+                                        </a>
+                                        <a class="dropdown-toggle" data-toggle="dropdown" href="#">
+                                            <i class="fa fa-wrench"></i>
+                                        </a>
+                                        <ul class="dropdown-menu dropdown-user">
+                                        </ul>
+                                        <a class="close-link">
+                                            <i class="fa fa-times"></i>
+                                        </a>
+                                    </div>
+                                </div>
+                                <div class="ibox-content">
+                                    <table class="table">
+                                        <tbody>
+                                        <tr class="no-borders-tr">
+                                            <td>{% trans 'Name' %}:</td>
+                                            <td><b>{{ org.name }}</b></td>
+                                        </tr>
+                                        <tr>
+                                            <td>{% trans 'Created by' %}:</td>
+                                            <td><b>{{ org.created_by }}</b></td>
+                                        </tr>
+                                        <tr>
+                                            <td>{% trans 'Date created' %}:</td>
+                                            <td><b>{{ org.date_created }}</b></td>
+                                        </tr>
+                                        <tr>
+                                            <td>{% trans 'Comment' %}:</td>
+                                            <td><b>{{ org.comment }}</b></td>
+                                        </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}
+{% block custom_foot_js %}
+<script>
+$(document).ready()
+.on('click', '.btn-delete-org', function () {
+    var $this = $(this);
+    var name = "{{ org.name }}";
+    var uid = "{{ org.id }}";
+    var the_url = '{% url "api-orgs:org-detail" pk=DEFAULT_PK %}'.replace('{{ DEFAULT_PK }}', uid);
+    var redirect_url = "{% url 'orgs:org-list' %}";
+    objectDelete($this, name, the_url, redirect_url);
+})
+</script>
+{% endblock %}

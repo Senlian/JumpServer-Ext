@@ -1,0 +1,16 @@
+{
+  "count": 1,
+  "next": null,
+  "previous": null,
+  "results": [
+    {
+      "_class": "hudson.model.FreeStyleProject",
+      "name": "测试创建任务1",
+      "url": "http://192.168.159.10:9001/job/测试创建任务1/",
+      "color": "notbuilt",
+      "fullname": "测试创建任务1",
+      "status": "notbuilt",
+      "label": "master"
+    }
+  ]
+}

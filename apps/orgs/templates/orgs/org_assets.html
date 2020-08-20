@@ -1,0 +1,23 @@
+{% extends 'orgs/_org_list_base.html' %}
+{% load static %}
+{% load i18n %}
+
+{% block ibox-title %}
+    {% trans 'Asset list of ' %}
+    <b>{{ org.name }}</b>
+{% endblock %}
+
+{% block ibox-content %}
+    {% include 'orgs/_org_asset_list.html' %}
+{% endblock %}
+
+{% block custom_foot_js %}
+    <script>
+        $(document).ready(function () {
+            var assetOrgListUrl = setUrlParam(defaultAssetOrgListUrl, "prefer_id", "{{ org.id }}");
+            assetOrgListUrl = setUrlParam(assetOrgListUrl, "prefer", "org_asset");
+            console.log(assetOrgListUrl);
+            initAssetOrgTable({assetOrgListUrl: assetOrgListUrl});
+        })
+    </script>
+{% endblock %}

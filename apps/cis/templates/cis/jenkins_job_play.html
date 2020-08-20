@@ -1,0 +1,46 @@
+{% load static i18n %}
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, shrink-to-fit=no">
+    <link href="{% static 'css/plugins/datepicker/datepicker3.css' %}" rel="stylesheet">
+</head>
+<div class="container-fluid">
+    <div id="form-box">
+        <form class="layui-form" role="form" action="" id="parameters-form-{{ job_name }}">
+            {% csrf_token %}
+            {% for name, argv in parameters.items %}
+                <div class="layui-form-item">
+                    <div class="layui-inline">
+                        <label class="layui-form-label" title="{{ name }}"><b>{{ name }}</b></label>
+                        {% if argv.choiceType in TEXT_TYPES %}
+                            <div class="layui-input-inline">
+                                <input type="text" id="{{ argv.randomName }}" name="{{ name }}" value="{% if argv.defaultValue %}{{ defaultValue }}{% else %}{{ argv.choices|first }}{% endif %}" autocomplete="off" class="layui-input" readonly>
+                            </div>
+                        {% elif argv.choiceType in MULTI_TYPES or argv.choiceType in SINGLE_TYPES %}
+                            <div class="layui-input-inline">
+                                {% ifequal argv.choiceType 'PT_MULTI_SELECT' %}
+                                    <select id="{{ argv.randomName }}" name="{{ name }}" lay-verify="required" multiple="multiple" size="{{ argv.choices.count }}">
+                                {% else %}
+                                    <select id="{{ argv.randomName }}" name="{{ name }}" lay-verify="required">
+                                {% endifequal  %}
+                                {% for choice in argv.choices %}
+                                    {% if choice == argv.defaultValue or choice == argv.choices|first  %}
+                                        <option value="{{ choice }}" selected>{{ choice }}</option>
+                                    {% else %}
+                                        <option value="{{ choice }}">{{ choice }}</option>
+                                    {% endif %}
+                                {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                    {% endif %}
+                </div>
+            {% empty %}
+            {% endfor %}
+        </form>
+    </div>
+</div>
+<script>
+    var p = "{{  parameters }}";
+    console.log(p);
+</script>
